@@ -8,7 +8,9 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 import RegistrationForm from './components/RegistrationForm';
 import ChatInterface from './components/ChatInterface';
 
-const socket = io('http://192.168.1.23:3001', { autoConnect: false });
+//const socket = io('http://192.168.1.23:3001', { autoConnect: false });
+//const socket = io(process.env.REACT_APP_SOCKET_URL || '/', { autoConnect: false });
+const socket = io(); // This will use the same origin as the frontend
 
 function App() {
   const [currentUser, setCurrentUser] = useState(() => {
