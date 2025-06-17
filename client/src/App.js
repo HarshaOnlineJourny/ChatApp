@@ -58,36 +58,34 @@ function App() {
   const handleToggleDarkMode = () => setDarkMode((prev) => !prev);
 
   useEffect(() => {
+    // Reconnect socket if currentUser exists but socketId is missing (e.g., page refresh)
     if (currentUser && !currentUser.socketId) {
-      // Connect and register with the server
       if (!socket.connected) socket.connect();
       socket.emit('register', currentUser);
     }
-  }, [currentUser]);
 
-  useEffect(() => {
-    socket.on('registration_error', (error) => {
-      alert(error.message);
-      setCurrentUser(null);
-      setIsRegistered(false);
-      sessionStorage.removeItem('chatUser');
-    });
-
-    socket.on('registration_success', (data) => {
-      setIsRegistered(true);
-      // Save to sessionStorage
-      sessionStorage.setItem('chatUser', JSON.stringify({ ...currentUser, socketId: data.socketId }));
-      setCurrentUser((prev) => ({ ...prev, socketId: data.socketId }));
-    });
+    // Listen for user registration confirmation (optional, based on server behavior)
+    // In current in-memory server, it just updates users and doesn't send 'registration_success'
+    // socket.on('registration_success', (data) => {
+    //   setIsRegistered(true);
+    //   sessionStorage.setItem('chatUser', JSON.stringify({ ...currentUser, socketId: data.socketId }));
+    //   setCurrentUser((prev) => ({ ...prev, socketId: data.socketId }));
+    // });
 
     return () => {
-      socket.off('registration_error');
-      socket.off('registration_success');
+      // socket.off('registration_success');
     };
   }, [currentUser]);
 
   const handleRegister = (userData) => {
+    // Connect the socket explicitly here before emitting
+    if (!socket.connected) {
+      socket.connect();
+    }
+    socket.emit('register', userData);
     setCurrentUser(userData);
+    setIsRegistered(true); // Assume registered upon emit to server for in-memory only
+    sessionStorage.setItem('chatUser', JSON.stringify(userData)); // Save immediately
   };
 
   const handleSignOut = () => {
