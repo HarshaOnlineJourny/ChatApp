@@ -25,14 +25,16 @@ const RegistrationForm = ({ onRegister }) => {
     gender: '',
     country: '',
     state: '',
-    latitude: null,
-    longitude: null,
+    // latitude: null, // No longer storing in DB
+    // longitude: null, // No longer storing in DB
   });
   const [locationError, setLocationError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    getLocation();
+    // We still get location, but don't necessarily pass to server for DB save
+    // If location is not needed at all, this can be removed.
+    getLocation(); 
   }, []);
 
   const getLocation = () => {
@@ -68,10 +70,11 @@ const RegistrationForm = ({ onRegister }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!formData.latitude || !formData.longitude) {
-      setLocationError('Please allow location access to continue');
-      return;
-    }
+    // No longer blocking registration on location, as it's not saved to DB
+    // if (!formData.latitude || !formData.longitude) {
+    //   setLocationError('Please allow location access to continue');
+    //   return;
+    // }
     onRegister(formData);
   };
 
@@ -185,7 +188,7 @@ const RegistrationForm = ({ onRegister }) => {
               height: isMobile ? 40 : 48,
               borderRadius: 2
             }}
-            disabled={isLoading || !formData.latitude || !formData.longitude}
+            disabled={isLoading}
             startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : <LocationOnIcon />}
           >
             {isLoading ? 'Getting Location...' : 'Join Chat'}

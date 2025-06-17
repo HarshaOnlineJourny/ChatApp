@@ -171,7 +171,8 @@ const ChatInterface = ({ socket, currentUser, onSignOut, isMobile }) => {
   const handleClearChat = () => {
     if (selectedUser) {
       setMessages([]);
-      socket.emit('clear_chat', { withUsername: selectedUser.username });
+      // No longer emitting 'clear_chat' to the server, as data is not persisted
+      // socket.emit('clear_chat', { withUsername: selectedUser.username });
     }
   };
 
