@@ -102,6 +102,10 @@ const ChatInterface = ({ socket, currentUser, onSignOut, isMobile }) => {
   const handleSendMessage = (e) => {
     e.preventDefault();
     if (!message.trim() || !selectedUser) return;
+    
+    // Prevent default form submission behavior
+    e.stopPropagation();
+    
     socket.emit('private_message', {
       recipientUsername: selectedUser.username,
       message: message.trim(),
@@ -378,7 +382,17 @@ const ChatInterface = ({ socket, currentUser, onSignOut, isMobile }) => {
             borderColor: 'divider',
             bgcolor: 'background.paper'
           }}>
-            <form onSubmit={handleSendMessage} style={{ display: 'flex', gap: 8 }}>
+            <Box 
+              component="form" 
+              onSubmit={handleSendMessage} 
+              style={{ display: 'flex', gap: 8 }}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSendMessage(e);
+                }
+              }}
+            >
               <IconButton onClick={handleEmojiIconClick} color="primary">
                 <EmojiEmotionsIcon />
               </IconButton>
@@ -399,16 +413,32 @@ const ChatInterface = ({ socket, currentUser, onSignOut, isMobile }) => {
                 placeholder="Type a message..."
                 variant="outlined"
                 size="small"
+                multiline
+                maxRows={4}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    '& fieldset': {
+                      borderColor: 'divider',
+                    },
+                    '&:hover fieldset': {
+                      borderColor: 'primary.main',
+                    },
+                  },
+                }}
               />
               <Button 
                 type="submit" 
                 variant="contained" 
                 color="primary"
                 disabled={!message.trim()}
+                sx={{
+                  minWidth: '80px',
+                  borderRadius: 2,
+                }}
               >
                 Send
               </Button>
-            </form>
+            </Box>
           </Box>
         </>
       ) : (
@@ -462,7 +492,8 @@ const ChatInterface = ({ socket, currentUser, onSignOut, isMobile }) => {
     <Box sx={{ 
       display: 'flex', 
       height: '100%',
-      bgcolor: 'background.default'
+      bgcolor: 'background.default',
+      position: 'relative'
     }}>
       {isMobile ? (
         <>
@@ -482,11 +513,23 @@ const ChatInterface = ({ socket, currentUser, onSignOut, isMobile }) => {
           </Drawer>
           <IconButton
             onClick={() => setDrawerOpen(true)}
-            sx={{ position: 'absolute', left: 16, top: 16, zIndex: 1 }}
+            sx={{ 
+              position: 'fixed',
+              left: 16,
+              top: 16,
+              zIndex: 1200,
+              bgcolor: 'background.paper',
+              boxShadow: 1,
+              '&:hover': {
+                bgcolor: 'action.hover',
+              },
+            }}
           >
             <MenuIcon />
           </IconButton>
-          <ChatArea />
+          <Box sx={{ width: '100%', pt: 7 }}>
+            <ChatArea />
+          </Box>
         </>
       ) : (
         <>
