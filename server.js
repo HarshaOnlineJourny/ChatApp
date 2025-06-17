@@ -128,6 +128,17 @@ io.on('connection', (socket) => {
     io.emit('update_message_reaction', { messageId, reaction, sender: sender.username });
   });
 
+  socket.on('mark_messages_read', ({ withUsername }) => {
+    const currentUser = onlineUsers.get(socket.id);
+    if (!currentUser) return;
+
+    // Notify the other user that their messages have been read
+    const otherUser = Array.from(onlineUsers.values()).find(user => user.username === withUsername);
+    if (otherUser) {
+      io.to(otherUser.socketId).emit('messages_read', { byUsername: currentUser.username });
+    }
+  });
+
   socket.on('disconnect', () => {
     console.log(`Client disconnected: ${socket.id}`);
     const disconnectedUser = onlineUsers.get(socket.id);

@@ -65,6 +65,13 @@ const ChatInterface = ({ socket, currentUser, onSignOut, isMobile }) => {
       console.log('Received private_message:', messageData);
       if (selectedUserRef.current && messageData.sender === selectedUserRef.current.username) {
         setMessages(prev => [...prev, messageData]);
+        socket.emit('mark_messages_read', { withUsername: messageData.sender });
+        setUnreadCounts(prev => ({ ...prev, [messageData.sender]: 0 }));
+      } else {
+        setUnreadCounts(prev => ({
+          ...prev,
+          [messageData.sender]: (prev[messageData.sender] || 0) + 1
+        }));
       }
     });
 
@@ -119,6 +126,8 @@ const ChatInterface = ({ socket, currentUser, onSignOut, isMobile }) => {
     if (isMobile) {
       setDrawerOpen(false);
     }
+    socket.emit('mark_messages_read', { withUsername: user.username });
+    setUnreadCounts(prev => ({ ...prev, [user.username]: 0 }));
     setTimeout(() => {
       socket.emit('get_chat_history', { withUsername: user.username });
     }, 10);
@@ -228,10 +237,22 @@ const ChatInterface = ({ socket, currentUser, onSignOut, isMobile }) => {
       height: '100%', 
       display: 'flex', 
       flexDirection: 'column',
-      bgcolor: 'background.paper'
+      bgcolor: 'background.paper',
+      borderRight: '1px solid',
+      borderColor: 'divider'
     }}>
-      <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
+      <Box sx={{ 
+        p: 2, 
+        borderBottom: 1, 
+        borderColor: 'divider',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }}>
         <Typography variant="h6">Online Users</Typography>
+        <IconButton onClick={handleSignOut} color="inherit" title="Sign Out">
+          <LogoutIcon />
+        </IconButton>
       </Box>
       <List sx={{ flex: 1, overflow: 'auto' }}>
         {users.map((user) => (
@@ -245,31 +266,34 @@ const ChatInterface = ({ socket, currentUser, onSignOut, isMobile }) => {
               mb: 1,
               flexDirection: { xs: 'row' },
               alignItems: 'center',
-              p: 1
+              p: 1,
+              '&:hover': {
+                bgcolor: 'action.hover',
+              },
+              '&.Mui-selected': {
+                bgcolor: 'primary.light',
+                '&:hover': {
+                  bgcolor: 'primary.light',
+                },
+              },
             }}
           >
             <Badge
-              color="secondary"
+              color="error"
               badgeContent={unreadCounts[user.username] || 0}
               invisible={!unreadCounts[user.username]}
               sx={{ mr: 2 }}
-              anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-              overlap="circular"
             >
-              <Avatar 
-                sx={{ 
-                  bgcolor: user.username ? stringToColor(user.username) : undefined,
-                  width: 40,
-                  height: 40,
-                  mr: 1
-                }}
-              >
-                {user.username ? user.username[0].toUpperCase() : '?'}
+              <Avatar sx={{ bgcolor: stringToColor(user.username) }}>
+                {user.username[0].toUpperCase()}
               </Avatar>
             </Badge>
-            <ListItemText
+            <ListItemText 
               primary={user.username}
-              secondary={`${user.age} years${user.country ? ', ' + user.country : ''}`}
+              secondary={`${user.age} • ${user.country}`}
+              primaryTypographyProps={{
+                fontWeight: unreadCounts[user.username] ? 'bold' : 'normal'
+              }}
             />
           </ListItem>
         ))}
@@ -309,255 +333,51 @@ const ChatInterface = ({ socket, currentUser, onSignOut, isMobile }) => {
   };
 
   return (
-    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <Box sx={{ 
+      display: 'flex', 
+      height: '100%',
+      bgcolor: 'background.default'
+    }}>
       {isMobile ? (
         <>
           <Drawer
             variant="temporary"
             anchor="left"
             open={drawerOpen}
-            onClose={handleDrawerToggle}
-            ModalProps={{ keepMounted: true }}
+            onClose={() => setDrawerOpen(false)}
             sx={{
               '& .MuiDrawer-paper': { 
-                boxSizing: 'border-box',
                 width: 280,
-                height: '100%'
+                boxSizing: 'border-box',
               },
             }}
           >
             <UserList />
           </Drawer>
-          <AppBar position="static" color="default" elevation={1}>
-            <Toolbar>
-              {selectedUser ? (
-                <>
-                  <IconButton
-                    edge="start"
-                    color="inherit"
-                    onClick={() => setSelectedUser(null)}
-                    sx={{ mr: 2 }}
-                  >
-                    <ArrowBackIcon />
-                  </IconButton>
-                  <Typography variant="h6" noWrap sx={{ flexGrow: 1 }}>
-                    {selectedUser.username}
-                  </Typography>
-                  <IconButton
-                    color="inherit"
-                    onClick={handleClearChat}
-                    title="Clear chat"
-                  >
-                    <DeleteSweepIcon />
-                  </IconButton>
-                </>
-              ) : (
-                <>
-                  <IconButton
-                    edge="start"
-                    color="inherit"
-                    onClick={handleDrawerToggle}
-                    sx={{ mr: 2 }}
-                  >
-                    <MenuIcon />
-                  </IconButton>
-                  <Typography variant="h6" noWrap sx={{ flexGrow: 1 }}>
-                    Chat
-                  </Typography>
-                </>
-              )}
-            </Toolbar>
-          </AppBar>
+          <IconButton
+            onClick={() => setDrawerOpen(true)}
+            sx={{ position: 'absolute', left: 16, top: 16, zIndex: 1 }}
+          >
+            <MenuIcon />
+          </IconButton>
+          <ChatArea />
         </>
       ) : (
-        <Box sx={{ display: 'flex', height: '100%' }}>
-          <Box sx={{ 
-            width: 320,
-            borderRight: 1,
-            borderColor: 'divider',
-            display: { xs: 'none', md: 'block' }
-          }}>
-            <UserList />
-          </Box>
-        </Box>
+        <>
+          <UserList />
+          <ChatArea />
+        </>
       )}
-
-      <Box sx={{ 
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        bgcolor: 'background.paper',
-        height: '100%'
-      }}>
-        {selectedUser ? (
-          <>
-            <Box sx={{ 
-              flex: 1,
-              overflow: 'auto',
-              p: 2,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 1
-            }}>
-              {messages.map((msg, index) => (
-                <Box
-                  key={index}
-                  sx={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: msg.sender === currentUser.username ? 'flex-end' : 'flex-start',
-                    mb: 1,
-                  }}
-                >
-                  <Paper
-                    elevation={1}
-                    sx={{
-                      p: 1.5,
-                      maxWidth: '80%',
-                      bgcolor: msg.sender === currentUser.username ? 'primary.light' : 'grey.100',
-                      position: 'relative',
-                      borderRadius: 2,
-                    }}
-                  >
-                    {msg.isImage ? (
-                      <img 
-                        src={msg.message} 
-                        alt="Shared" 
-                        style={{ 
-                          maxWidth: '100%', 
-                          maxHeight: '300px', 
-                          borderRadius: '8px' 
-                        }} 
-                      />
-                    ) : (
-                      <Typography variant="body1">{msg.message}</Typography>
-                    )}
-                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-                      {new Date(msg.timestamp).toLocaleTimeString()}
-                    </Typography>
-                    {Object.entries(msg.reactions || {}).length > 0 && (
-                      <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5, flexWrap: 'wrap' }}>
-                        {Object.entries(msg.reactions).map(([reaction, count]) => (
-                          <Typography key={reaction} variant="caption" sx={{ bgcolor: 'background.paper', px: 0.5, borderRadius: 1 }}>
-                            {reaction} {count}
-                          </Typography>
-                        ))}
-                      </Box>
-                    )}
-                    <IconButton
-                      size="small"
-                      onClick={(e) => { setReactionAnchorEl(e.currentTarget); setSelectedMessageForReaction(msg); }}
-                      sx={{ position: 'absolute', right: -8, top: -8, bgcolor: 'background.paper' }}
-                    >
-                      <EmojiEmotionsIcon fontSize="small" />
-                    </IconButton>
-                  </Paper>
-                </Box>
-              ))}
-              <div ref={messagesEndRef} />
-            </Box>
-            <Box
-              component="form"
-              onSubmit={handleSendMessage}
-              sx={{ 
-                p: 2,
-                borderTop: 1,
-                borderColor: 'divider',
-                bgcolor: 'background.paper'
-              }}
-            >
-              <Box sx={{ display: 'flex', gap: 1, position: 'relative' }}>
-                <input
-                  type="file"
-                  accept="image/*"
-                  style={{ display: 'none' }}
-                  ref={fileInputRef}
-                  onChange={handleFileSelect}
-                />
-                <IconButton
-                  onClick={handleImageClick}
-                  sx={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', zIndex: 1 }}
-                >
-                  <PhotoCameraIcon />
-                </IconButton>
-                <IconButton
-                  onClick={handleEmojiIconClick}
-                  sx={{ position: 'absolute', left: 48, top: '50%', transform: 'translateY(-50%)', zIndex: 1 }}
-                >
-                  <EmojiEmotionsIcon />
-                </IconButton>
-                <TextField
-                  fullWidth
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Type a message..."
-                  variant="outlined"
-                  size="small"
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      pl: 10,
-                      pr: 1,
-                      borderRadius: 3,
-                    },
-                  }}
-                />
-                <Button
-                  type="submit"
-                  variant="contained"
-                  color="primary"
-                  disabled={!message.trim()}
-                  sx={{ borderRadius: 3 }}
-                >
-                  Send
-                </Button>
-              </Box>
-            </Box>
-          </>
-        ) : (
-          <Box sx={{ 
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            height: '100%',
-            p: 3
-          }}>
-            <Typography variant="h6" color="text.secondary" align="center">
-              {isMobile ? 'Select a user to start chatting' : 'Select a user from the list to start chatting'}
-            </Typography>
-          </Box>
-        )}
-      </Box>
-
       <Popover
         open={Boolean(emojiAnchorEl)}
         anchorEl={emojiAnchorEl}
         onClose={handleEmojiClose}
         anchorOrigin={{
-          vertical: 'top',
-          horizontal: 'left',
-        }}
-        transformOrigin={{
           vertical: 'bottom',
           horizontal: 'left',
         }}
       >
         <EmojiPicker onEmojiClick={handleEmojiSelect} />
-      </Popover>
-
-      <Popover
-        open={Boolean(reactionAnchorEl)}
-        anchorEl={reactionAnchorEl}
-        onClose={() => setReactionAnchorEl(null)}
-        anchorOrigin={{
-          vertical: 'top',
-          horizontal: 'right',
-        }}
-        transformOrigin={{
-          vertical: 'bottom',
-          horizontal: 'right',
-        }}
-      >
-        <EmojiPicker onEmojiClick={handleReactionSelect} />
       </Popover>
     </Box>
   );
