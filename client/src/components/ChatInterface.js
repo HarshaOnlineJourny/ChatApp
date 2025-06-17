@@ -46,6 +46,7 @@ const ChatInterface = ({ socket, currentUser, onSignOut, isMobile }) => {
   const [emojiAnchorEl, setEmojiAnchorEl] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
   const fileInputRef = useRef(null);
+  const messageInputRef = useRef(null);
   const theme = useTheme();
 
   useEffect(() => {
@@ -103,9 +104,6 @@ const ChatInterface = ({ socket, currentUser, onSignOut, isMobile }) => {
     e.preventDefault();
     if (!message.trim() || !selectedUser) return;
     
-    // Prevent default form submission behavior
-    e.stopPropagation();
-    
     socket.emit('private_message', {
       recipientUsername: selectedUser.username,
       message: message.trim(),
@@ -119,6 +117,9 @@ const ChatInterface = ({ socket, currentUser, onSignOut, isMobile }) => {
       reactions: {},
     }]);
     setMessage('');
+    if (messageInputRef.current) {
+      messageInputRef.current.focus();
+    }
   };
 
   const handleDrawerToggle = () => {
@@ -386,12 +387,6 @@ const ChatInterface = ({ socket, currentUser, onSignOut, isMobile }) => {
               component="form" 
               onSubmit={handleSendMessage} 
               style={{ display: 'flex', gap: 8 }}
-              onKeyPress={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSendMessage(e);
-                }
-              }}
             >
               <IconButton onClick={handleEmojiIconClick} color="primary">
                 <EmojiEmotionsIcon />
@@ -409,7 +404,10 @@ const ChatInterface = ({ socket, currentUser, onSignOut, isMobile }) => {
               <TextField
                 fullWidth
                 value={message}
-                onChange={(e) => setMessage(e.target.value)}
+                onChange={(e) => {
+                  setMessage(e.target.value);
+                }}
+                inputRef={messageInputRef}
                 placeholder="Type a message..."
                 variant="outlined"
                 size="small"
@@ -534,7 +532,14 @@ const ChatInterface = ({ socket, currentUser, onSignOut, isMobile }) => {
       ) : (
         <>
           <UserList />
-          <ChatArea />
+          <Box sx={{ width: '100%', 
+            pt: { xs: '56px', sm: '64px' },
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column'
+          }}> 
+            <ChatArea />
+          </Box>
         </>
       )}
       <Popover
