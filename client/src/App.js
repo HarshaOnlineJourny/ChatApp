@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { io } from 'socket.io-client';
-import { CssBaseline, Container, IconButton, AppBar, Toolbar, Typography, useMediaQuery } from '@mui/material';
+import { CssBaseline, Container, IconButton, AppBar, Toolbar, Typography, useMediaQuery, Box } from '@mui/material';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
@@ -101,15 +101,28 @@ function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <AppBar position="fixed" color="default" elevation={1}>
-        <Toolbar sx={{ minHeight: { xs: '48px', sm: '64px' } }}>
-          <Typography variant={isMobile ? "subtitle1" : "h6"} sx={{ flexGrow: 1 }}>
-            Real-time Chat
-          </Typography>
+        <Toolbar sx={{ 
+          minHeight: { xs: '48px', sm: '64px' },
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Typography variant={isMobile ? "subtitle1" : "h6"} sx={{ flexGrow: 1 }}>
+              Real-time Chat
+            </Typography>
+          </Box>
           <IconButton 
             color="inherit" 
             onClick={handleToggleDarkMode} 
             title="Toggle dark mode"
             size={isMobile ? "small" : "medium"}
+            sx={{ 
+              ml: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
           >
             {darkMode ? <Brightness7Icon /> : <Brightness4Icon />}
           </IconButton>

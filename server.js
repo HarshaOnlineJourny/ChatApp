@@ -4,6 +4,7 @@ const socketIo = require('socket.io');
 const cors = require('cors');
 require('dotenv').config();
 const path = require('path');
+const { Pool } = require('pg');
 
 const app = express();
 const server = http.createServer(app);
@@ -25,6 +26,11 @@ const chatHistories = new Map();
 // Store unread counts: key is recipient username, value is { senderUsername: count }
 const unreadCounts = new Map();
 
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
+});
+
 function getChatKey(userA, userB) {
   // Always sort usernames to ensure unique key for each pair
   return [userA, userB].sort().join('::');
@@ -42,9 +48,9 @@ io.on('connection', (socket) => {
   console.log('New client connected:', socket.id);
 
   // Handle user registration
-  socket.on('register', (userData) => {
+  socket.on('register', async (userData) => {
     console.log('Registration attempt:', userData.username);
-    const { username, age, gender, country, state } = userData;
+    const { username, age, gender, country, state, latitude, longitude } = userData;
 
     // Clean up any disconnected sockets first
     for (const [sockId, user] of onlineUsers.entries()) {
@@ -87,11 +93,23 @@ io.on('connection', (socket) => {
       gender,
       country: country || '',
       state: state || '',
-      socketId: socket.id
+      socketId: socket.id,
+      latitude,
+      longitude
     });
 
     console.log(`Registration successful for ${username}`);
     logOnlineUsers();
+
+    // Save user to Postgres
+    try {
+      await pool.query(
+        'INSERT INTO users (username, age, gender, country, state, latitude, longitude, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW()) ON CONFLICT (username) DO NOTHING',
+        [username, age, gender, country, state, latitude, longitude]
+      );
+    } catch (err) {
+      console.error('Error saving user to Postgres:', err);
+    }
 
     // Notify all clients about the new user
     // io.emit('user_list', Array.from(onlineUsers.values()));
@@ -112,34 +130,63 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Handle clear chat
+  socket.on('clear_chat', ({ withUsername }) => {
+    const sender = onlineUsers.get(socket.id);
+    if (!sender) return;
+    
+    // Clear chat history in database
+    pool.query(
+      'DELETE FROM messages WHERE (sender = $1 AND recipient = $2) OR (sender = $2 AND recipient = $1)',
+      [sender.username, withUsername]
+    );
+
+    // Notify both users
+    const recipient = Array.from(onlineUsers.values()).find(user => user.username === withUsername);
+    if (recipient) {
+      io.to(recipient.socketId).emit('chat_cleared', { withUsername: sender.username });
+    }
+    socket.emit('chat_cleared', { withUsername });
+  });
+
   // Handle private messages
-  socket.on('private_message', ({ recipientId, message }) => {
+  socket.on('private_message', async ({ recipientId, message, isImage }) => {
     const sender = onlineUsers.get(socket.id);
     if (!sender) return;
     const recipient = onlineUsers.get(recipientId);
     if (!recipient) return;
-    const chatKey = getChatKey(sender.username, recipient.username);
-    const msgObj = {
+
+    const messageData = {
       sender: sender.username,
       recipient: recipient.username,
       message,
+      isImage,
       timestamp: new Date().toISOString(),
+      reactions: {},
     };
-    // Store in chat history
-    if (!chatHistories.has(chatKey)) chatHistories.set(chatKey, []);
-    chatHistories.get(chatKey).push(msgObj);
-    // Send to recipient
-    const recipientSocket = io.sockets.sockets.get(recipientId);
-    if (recipientSocket) {
-      recipientSocket.emit('private_message', msgObj);
-      // Update unread count
-      if (!unreadCounts.has(recipient.username)) unreadCounts.set(recipient.username, {});
-      const uc = unreadCounts.get(recipient.username);
-      uc[sender.username] = (uc[sender.username] || 0) + 1;
-      recipientSocket.emit('unread_counts', uc);
+
+    // Save message to database
+    try {
+      await pool.query(
+        'INSERT INTO messages (sender, recipient, message, timestamp, sender_latitude, sender_longitude, is_image) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+        [
+          sender.username,
+          recipient.username,
+          message,
+          messageData.timestamp,
+          sender.latitude,
+          sender.longitude,
+          isImage || false
+        ]
+      );
+    } catch (err) {
+      console.error('Error saving message to database:', err);
     }
-    // Also send to sender (for their chat window)
-    socket.emit('private_message', msgObj);
+
+    // Send message to recipient
+    io.to(recipientId).emit('private_message', messageData);
+    // Send message back to sender
+    socket.emit('private_message', messageData);
   });
 
   // Handle disconnection

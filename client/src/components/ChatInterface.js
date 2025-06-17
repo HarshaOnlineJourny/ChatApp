@@ -27,6 +27,9 @@ import EmojiEmotionsIcon from '@mui/icons-material/EmojiEmotions';
 import EmojiPicker from 'emoji-picker-react';
 import MenuIcon from '@mui/icons-material/Menu';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
+import ImageIcon from '@mui/icons-material/Image';
+import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 
 const ChatInterface = ({ socket, currentUser, onSignOut, isMobile }) => {
   const [users, setUsers] = useState([]);
@@ -41,6 +44,8 @@ const ChatInterface = ({ socket, currentUser, onSignOut, isMobile }) => {
   const messagesEndRef = useRef(null);
   const selectedUserRef = useRef(selectedUser);
   const [emojiAnchorEl, setEmojiAnchorEl] = useState(null);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const fileInputRef = useRef(null);
   const theme = useTheme();
 
   useEffect(() => {
@@ -163,6 +168,55 @@ const ChatInterface = ({ socket, currentUser, onSignOut, isMobile }) => {
     };
   }, [socket]);
 
+  const handleClearChat = () => {
+    if (selectedUser) {
+      setMessages([]);
+      socket.emit('clear_chat', { withUsername: selectedUser.username });
+    }
+  };
+
+  const handleFileSelect = (event) => {
+    const file = event.target.files[0];
+    if (file && file.type.startsWith('image/')) {
+      setSelectedFile(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const imageData = e.target.result;
+        socket.emit('private_message', {
+          recipientId: selectedUser.socketId,
+          message: imageData,
+          isImage: true
+        });
+        setMessages(prev => [...prev, {
+          sender: currentUser.username,
+          recipient: selectedUser.username,
+          message: imageData,
+          isImage: true,
+          timestamp: new Date().toISOString(),
+          reactions: {},
+        }]);
+      };
+      reader.readAsDataURL(file);
+      setSelectedFile(null);
+    }
+  };
+
+  const handleImageClick = () => {
+    fileInputRef.current.click();
+  };
+
+  useEffect(() => {
+    socket.on('chat_cleared', ({ withUsername }) => {
+      if (selectedUserRef.current && selectedUserRef.current.username === withUsername) {
+        setMessages([]);
+      }
+    });
+
+    return () => {
+      socket.off('chat_cleared');
+    };
+  }, [socket]);
+
   const UserList = () => (
     <Box sx={{ 
       width: { xs: 250, sm: 320 }, 
@@ -250,9 +304,16 @@ const ChatInterface = ({ socket, currentUser, onSignOut, isMobile }) => {
                   >
                     <ArrowBackIcon />
                   </IconButton>
-                  <Typography variant="h6" noWrap>
+                  <Typography variant="h6" noWrap sx={{ flexGrow: 1 }}>
                     {selectedUser.username}
                   </Typography>
+                  <IconButton
+                    color="inherit"
+                    onClick={handleClearChat}
+                    title="Clear chat"
+                  >
+                    <DeleteSweepIcon />
+                  </IconButton>
                 </>
               ) : (
                 <>
@@ -264,7 +325,7 @@ const ChatInterface = ({ socket, currentUser, onSignOut, isMobile }) => {
                   >
                     <MenuIcon />
                   </IconButton>
-                  <Typography variant="h6" noWrap>
+                  <Typography variant="h6" noWrap sx={{ flexGrow: 1 }}>
                     Chat
                   </Typography>
                 </>
@@ -322,7 +383,19 @@ const ChatInterface = ({ socket, currentUser, onSignOut, isMobile }) => {
                       borderRadius: 2,
                     }}
                   >
-                    <Typography variant="body1">{msg.message}</Typography>
+                    {msg.isImage ? (
+                      <img 
+                        src={msg.message} 
+                        alt="Shared" 
+                        style={{ 
+                          maxWidth: '100%', 
+                          maxHeight: '300px', 
+                          borderRadius: '8px' 
+                        }} 
+                      />
+                    ) : (
+                      <Typography variant="body1">{msg.message}</Typography>
+                    )}
                     <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
                       {new Date(msg.timestamp).toLocaleTimeString()}
                     </Typography>
@@ -358,9 +431,22 @@ const ChatInterface = ({ socket, currentUser, onSignOut, isMobile }) => {
               }}
             >
               <Box sx={{ display: 'flex', gap: 1, position: 'relative' }}>
+                <input
+                  type="file"
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  ref={fileInputRef}
+                  onChange={handleFileSelect}
+                />
+                <IconButton
+                  onClick={handleImageClick}
+                  sx={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', zIndex: 1 }}
+                >
+                  <PhotoCameraIcon />
+                </IconButton>
                 <IconButton
                   onClick={handleEmojiIconClick}
-                  sx={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', zIndex: 1 }}
+                  sx={{ position: 'absolute', left: 48, top: '50%', transform: 'translateY(-50%)', zIndex: 1 }}
                 >
                   <EmojiEmotionsIcon />
                 </IconButton>
@@ -373,7 +459,7 @@ const ChatInterface = ({ socket, currentUser, onSignOut, isMobile }) => {
                   size="small"
                   sx={{
                     '& .MuiOutlinedInput-root': {
-                      pl: 5,
+                      pl: 10,
                       pr: 1,
                       borderRadius: 3,
                     },
