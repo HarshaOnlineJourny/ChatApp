@@ -22,6 +22,10 @@ app.use(express.static(path.join(__dirname, 'client/build')));
 const onlineUsers = new Map();
 const userChats = new Map(); // Store chats in memory
 
+function emitOnlineUsers() {
+  io.emit('update_users', Array.from(onlineUsers.values()));
+}
+
 io.on('connection', (socket) => {
   console.log(`New client connected: ${socket.id}`);
 
@@ -32,17 +36,32 @@ io.on('connection', (socket) => {
     // Store user in memory
     onlineUsers.set(socket.id, { socketId: socket.id, username, age, gender, country, state, latitude, longitude });
     console.log('Registration successful for', username);
-    io.emit('update_users', Array.from(onlineUsers.values()));
+    emitOnlineUsers();
     socket.emit('registered', { id: socket.id, username });
     console.log('Current online users:');
     onlineUsers.forEach(user => console.log(`Socket: ${user.socketId}, Username: ${user.username}`));
   });
 
-  socket.on('private_message', ({ recipientId, message, isImage }) => {
+  socket.on('private_message', ({ recipientUsername, message, isImage }) => {
     const sender = onlineUsers.get(socket.id);
     if (!sender) return;
-    const recipient = onlineUsers.get(recipientId);
-    if (!recipient) return;
+
+    // Find recipient's socketId by username
+    let recipientSocketId = null;
+    for (let [socketId, user] of onlineUsers) {
+      if (user.username === recipientUsername) {
+        recipientSocketId = socketId;
+        break;
+      }
+    }
+
+    if (!recipientSocketId) {
+      console.log(`Recipient ${recipientUsername} not found or not online.`);
+      return; // Recipient not found or not online
+    }
+
+    const recipient = onlineUsers.get(recipientSocketId);
+    if (!recipient) return; // Should not happen if recipientSocketId was found
 
     const messageData = {
       sender: sender.username,
@@ -70,7 +89,7 @@ io.on('connection', (socket) => {
     }
     userChats.get(recipient.username).get(sender.username).push(messageData);
 
-    io.to(recipientId).emit('private_message', messageData);
+    io.to(recipientSocketId).emit('private_message', messageData);
     socket.emit('private_message', messageData);
   });
 
@@ -123,7 +142,7 @@ io.on('connection', (socket) => {
     if (disconnectedUser) {
       console.log('User', disconnectedUser.username, 'disconnected');
       onlineUsers.delete(socket.id);
-      io.emit('update_users', Array.from(onlineUsers.values()));
+      emitOnlineUsers();
     }
     console.log('Current online users:');
     onlineUsers.forEach(user => console.log(`Socket: ${user.socketId}, Username: ${user.username}`));

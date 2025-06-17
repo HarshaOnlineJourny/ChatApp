@@ -93,8 +93,9 @@ const ChatInterface = ({ socket, currentUser, onSignOut, isMobile }) => {
     e.preventDefault();
     if (!message.trim() || !selectedUser) return;
     socket.emit('private_message', {
-      recipientId: selectedUser.socketId,
+      recipientUsername: selectedUser.username,
       message: message.trim(),
+      isImage: false,
     });
     setMessages(prev => [...prev, {
       sender: currentUser.username,
@@ -184,7 +185,7 @@ const ChatInterface = ({ socket, currentUser, onSignOut, isMobile }) => {
       reader.onload = (e) => {
         const imageData = e.target.result;
         socket.emit('private_message', {
-          recipientId: selectedUser.socketId,
+          recipientUsername: selectedUser.username,
           message: imageData,
           isImage: true
         });
