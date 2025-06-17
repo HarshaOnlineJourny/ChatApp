@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, memo } from 'react';
 import {
   Box,
   Paper,
@@ -404,9 +404,7 @@ const ChatInterface = ({ socket, currentUser, onSignOut, isMobile }) => {
               <TextField
                 fullWidth
                 value={message}
-                onChange={(e) => {
-                  setMessage(e.target.value);
-                }}
+                onChange={(e) => setMessage(e.target.value)}
                 inputRef={messageInputRef}
                 placeholder="Type a message..."
                 variant="outlined"
@@ -570,4 +568,4 @@ function stringToColor(string) {
   return color;
 }
 
-export default ChatInterface; 
+export default memo(ChatInterface); 
