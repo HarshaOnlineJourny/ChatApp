@@ -16,14 +16,19 @@ import {
   Popover,
   Menu,
   MenuItem,
+  Drawer,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import LogoutIcon from '@mui/icons-material/Logout';
 import Badge from '@mui/material/Badge';
 import Avatar from '@mui/material/Avatar';
 import EmojiEmotionsIcon from '@mui/icons-material/EmojiEmotions';
 import EmojiPicker from 'emoji-picker-react';
+import MenuIcon from '@mui/icons-material/Menu';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
-const ChatInterface = ({ socket, currentUser, onSignOut }) => {
+const ChatInterface = ({ socket, currentUser, onSignOut, isMobile }) => {
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
   const [message, setMessage] = useState('');
@@ -32,9 +37,11 @@ const ChatInterface = ({ socket, currentUser, onSignOut }) => {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [reactionAnchorEl, setReactionAnchorEl] = useState(null);
   const [selectedMessageForReaction, setSelectedMessageForReaction] = useState(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const messagesEndRef = useRef(null);
   const selectedUserRef = useRef(selectedUser);
   const [emojiAnchorEl, setEmojiAnchorEl] = useState(null);
+  const theme = useTheme();
 
   useEffect(() => {
     selectedUserRef.current = selectedUser;
@@ -94,11 +101,18 @@ const ChatInterface = ({ socket, currentUser, onSignOut }) => {
     setMessage('');
   };
 
+  const handleDrawerToggle = () => {
+    setDrawerOpen(!drawerOpen);
+  };
+
   const handleSelectUser = (user) => {
     setSelectedUser(user);
+    if (isMobile) {
+      setDrawerOpen(false);
+    }
     setTimeout(() => {
       socket.emit('get_chat_history', { withUsername: user.username });
-    }, 10); // 1 seconds delay
+    }, 10);
   };
 
   const handleEmojiIconClick = (event) => {
@@ -149,51 +163,145 @@ const ChatInterface = ({ socket, currentUser, onSignOut }) => {
     };
   }, [socket]);
 
-  return (
-    <Box sx={{ height: '100vh', width: '100vw', display: 'flex', flexDirection: 'row', overflowX: 'auto' }}>
-      <Box sx={{ width: { xs: 80, sm: 120, md: 320 }, minWidth: 60, maxWidth: 400, bgcolor: 'background.paper', p: 1, borderRight: 1, borderColor: 'divider', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <Typography variant="h6" gutterBottom sx={{ display: { xs: 'none', md: 'block' } }}>
-          Online Users
-        </Typography>
-        <List sx={{ width: '100%' }}>
-          {users.map((user) => (
-            <ListItem
-              key={user.socketId}
-              button
-              selected={selectedUser?.socketId === user.socketId}
-              onClick={() => handleSelectUser(user)}
-              sx={{ borderRadius: 2, mb: 1, flexDirection: { xs: 'column', md: 'row' }, alignItems: 'center', justifyContent: 'center', p: { xs: 0.5, md: 1 } }}
-            >
-              <Badge
-                color="secondary"
-                badgeContent={unreadCounts[user.username] || 0}
-                invisible={!unreadCounts[user.username]}
-                sx={{ mr: { xs: 0, md: 2 }, mb: { xs: 0.5, md: 0 } }}
-                anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-                overlap="circular"
-              >
-                <Avatar sx={{ bgcolor: user.username ? stringToColor(user.username) : undefined, width: 36, height: 36, mb: { xs: 0.5, md: 0 }, mr: { xs: 0, md: 1 } }}>
-                  {user.username ? user.username[0].toUpperCase() : '?'}
-                </Avatar>
-              </Badge>
-              <ListItemText
-                primary={user.username}
-                secondary={`${user.age} years${user.country ? ', ' + user.country : ''}`}
-                sx={{ display: { xs: 'none', md: 'block' } }}
-              />
-            </ListItem>
-          ))}
-        </List>
+  const UserList = () => (
+    <Box sx={{ 
+      width: { xs: 250, sm: 320 }, 
+      height: '100%', 
+      display: 'flex', 
+      flexDirection: 'column',
+      bgcolor: 'background.paper'
+    }}>
+      <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
+        <Typography variant="h6">Online Users</Typography>
       </Box>
-      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', bgcolor: 'background.paper', p: 2, minWidth: 0 }}>
+      <List sx={{ flex: 1, overflow: 'auto' }}>
+        {users.map((user) => (
+          <ListItem
+            key={user.socketId}
+            button
+            selected={selectedUser?.socketId === user.socketId}
+            onClick={() => handleSelectUser(user)}
+            sx={{ 
+              borderRadius: 2, 
+              mb: 1,
+              flexDirection: { xs: 'row' },
+              alignItems: 'center',
+              p: 1
+            }}
+          >
+            <Badge
+              color="secondary"
+              badgeContent={unreadCounts[user.username] || 0}
+              invisible={!unreadCounts[user.username]}
+              sx={{ mr: 2 }}
+              anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+              overlap="circular"
+            >
+              <Avatar 
+                sx={{ 
+                  bgcolor: user.username ? stringToColor(user.username) : undefined,
+                  width: 40,
+                  height: 40,
+                  mr: 1
+                }}
+              >
+                {user.username ? user.username[0].toUpperCase() : '?'}
+              </Avatar>
+            </Badge>
+            <ListItemText
+              primary={user.username}
+              secondary={`${user.age} years${user.country ? ', ' + user.country : ''}`}
+            />
+          </ListItem>
+        ))}
+      </List>
+    </Box>
+  );
+
+  return (
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      {isMobile ? (
+        <>
+          <Drawer
+            variant="temporary"
+            anchor="left"
+            open={drawerOpen}
+            onClose={handleDrawerToggle}
+            ModalProps={{ keepMounted: true }}
+            sx={{
+              '& .MuiDrawer-paper': { 
+                boxSizing: 'border-box',
+                width: 280,
+                height: '100%'
+              },
+            }}
+          >
+            <UserList />
+          </Drawer>
+          <AppBar position="static" color="default" elevation={1}>
+            <Toolbar>
+              {selectedUser ? (
+                <>
+                  <IconButton
+                    edge="start"
+                    color="inherit"
+                    onClick={() => setSelectedUser(null)}
+                    sx={{ mr: 2 }}
+                  >
+                    <ArrowBackIcon />
+                  </IconButton>
+                  <Typography variant="h6" noWrap>
+                    {selectedUser.username}
+                  </Typography>
+                </>
+              ) : (
+                <>
+                  <IconButton
+                    edge="start"
+                    color="inherit"
+                    onClick={handleDrawerToggle}
+                    sx={{ mr: 2 }}
+                  >
+                    <MenuIcon />
+                  </IconButton>
+                  <Typography variant="h6" noWrap>
+                    Chat
+                  </Typography>
+                </>
+              )}
+            </Toolbar>
+          </AppBar>
+        </>
+      ) : (
+        <Box sx={{ display: 'flex', height: '100%' }}>
+          <Box sx={{ 
+            width: 320,
+            borderRight: 1,
+            borderColor: 'divider',
+            display: { xs: 'none', md: 'block' }
+          }}>
+            <UserList />
+          </Box>
+        </Box>
+      )}
+
+      <Box sx={{ 
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        bgcolor: 'background.paper',
+        height: '100%'
+      }}>
         {selectedUser ? (
           <>
-            <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
-              <Typography variant="h6">
-                Chat with {selectedUser.username}
-              </Typography>
-            </Box>
-            <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
+            <Box sx={{ 
+              flex: 1,
+              overflow: 'auto',
+              p: 2,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 1
+            }}>
               {messages.map((msg, index) => (
                 <Box
                   key={index}
@@ -207,14 +315,15 @@ const ChatInterface = ({ socket, currentUser, onSignOut }) => {
                   <Paper
                     elevation={1}
                     sx={{
-                      p: 1,
-                      maxWidth: '70%',
+                      p: 1.5,
+                      maxWidth: '80%',
                       bgcolor: msg.sender === currentUser.username ? 'primary.light' : 'grey.100',
                       position: 'relative',
+                      borderRadius: 2,
                     }}
                   >
                     <Typography variant="body1">{msg.message}</Typography>
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
                       {new Date(msg.timestamp).toLocaleTimeString()}
                     </Typography>
                     {Object.entries(msg.reactions || {}).length > 0 && (
@@ -241,7 +350,12 @@ const ChatInterface = ({ socket, currentUser, onSignOut }) => {
             <Box
               component="form"
               onSubmit={handleSendMessage}
-              sx={{ p: 2, borderTop: 1, borderColor: 'divider' }}
+              sx={{ 
+                p: 2,
+                borderTop: 1,
+                borderColor: 'divider',
+                bgcolor: 'background.paper'
+              }}
             >
               <Box sx={{ display: 'flex', gap: 1, position: 'relative' }}>
                 <IconButton
@@ -257,57 +371,72 @@ const ChatInterface = ({ socket, currentUser, onSignOut }) => {
                   placeholder="Type a message..."
                   variant="outlined"
                   size="small"
-                  sx={{ pl: 5 }}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      pl: 5,
+                      pr: 1,
+                      borderRadius: 3,
+                    },
+                  }}
                 />
                 <Button
                   type="submit"
                   variant="contained"
+                  color="primary"
                   disabled={!message.trim()}
+                  sx={{ borderRadius: 3 }}
                 >
                   Send
                 </Button>
               </Box>
-              <Popover
-                open={Boolean(emojiAnchorEl)}
-                anchorEl={emojiAnchorEl}
-                onClose={handleEmojiClose}
-                anchorOrigin={{ vertical: 'top', horizontal: 'left' }}
-                transformOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-              >
-                <EmojiPicker
-                  onEmojiClick={handleEmojiSelect}
-                  theme="light"
-                />
-              </Popover>
             </Box>
           </>
         ) : (
-          <Box
-            sx={{
-              height: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Typography variant="h6" color="text.secondary">
-              Select a user to start chatting
+          <Box sx={{ 
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            height: '100%',
+            p: 3
+          }}>
+            <Typography variant="h6" color="text.secondary" align="center">
+              {isMobile ? 'Select a user to start chatting' : 'Select a user from the list to start chatting'}
             </Typography>
           </Box>
         )}
       </Box>
-      <Menu
-        anchorEl={reactionAnchorEl}
-        open={Boolean(reactionAnchorEl)}
-        onClose={() => setReactionAnchorEl(null)}
+
+      <Popover
+        open={Boolean(emojiAnchorEl)}
+        anchorEl={emojiAnchorEl}
+        onClose={handleEmojiClose}
+        anchorOrigin={{
+          vertical: 'top',
+          horizontal: 'left',
+        }}
+        transformOrigin={{
+          vertical: 'bottom',
+          horizontal: 'left',
+        }}
       >
-        <Box sx={{ p: 1 }}>
-          <EmojiPicker
-            onEmojiClick={handleReactionSelect}
-            theme="light"
-          />
-        </Box>
-      </Menu>
+        <EmojiPicker onEmojiClick={handleEmojiSelect} />
+      </Popover>
+
+      <Popover
+        open={Boolean(reactionAnchorEl)}
+        anchorEl={reactionAnchorEl}
+        onClose={() => setReactionAnchorEl(null)}
+        anchorOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
+        transformOrigin={{
+          vertical: 'bottom',
+          horizontal: 'right',
+        }}
+      >
+        <EmojiPicker onEmojiClick={handleReactionSelect} />
+      </Popover>
     </Box>
   );
 };

@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { io } from 'socket.io-client';
-import { CssBaseline, Container, IconButton, AppBar, Toolbar, Typography } from '@mui/material';
+import { CssBaseline, Container, IconButton, AppBar, Toolbar, Typography, useMediaQuery } from '@mui/material';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
-import useMediaQuery from '@mui/material/useMediaQuery';
 import RegistrationForm from './components/RegistrationForm';
 import ChatInterface from './components/ChatInterface';
 
@@ -21,6 +20,7 @@ function App() {
   const [isRegistered, setIsRegistered] = useState(!!currentUser);
   const prefersDarkMode = useMediaQuery('(prefers-color-scheme: dark)');
   const [darkMode, setDarkMode] = useState(prefersDarkMode);
+  const isMobile = useMediaQuery('(max-width:600px)');
 
   const theme = useMemo(() => createTheme({
     palette: {
@@ -33,7 +33,27 @@ function App() {
         paper: darkMode ? '#1e1e1e' : '#fff',
       },
     },
-  }), [darkMode]);
+    components: {
+      MuiContainer: {
+        styleOverrides: {
+          root: {
+            padding: isMobile ? '8px' : '24px',
+          },
+        },
+      },
+      MuiAppBar: {
+        styleOverrides: {
+          root: {
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            zIndex: 1200,
+          },
+        },
+      },
+    },
+  }), [darkMode, isMobile]);
 
   const handleToggleDarkMode = () => setDarkMode((prev) => !prev);
 
@@ -80,21 +100,42 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <AppBar position="static" color="default" elevation={1}>
-        <Toolbar>
-          <Typography variant="h6" sx={{ flexGrow: 1 }}>
+      <AppBar position="fixed" color="default" elevation={1}>
+        <Toolbar sx={{ minHeight: { xs: '48px', sm: '64px' } }}>
+          <Typography variant={isMobile ? "subtitle1" : "h6"} sx={{ flexGrow: 1 }}>
             Real-time Chat
           </Typography>
-          <IconButton color="inherit" onClick={handleToggleDarkMode} title="Toggle dark mode">
+          <IconButton 
+            color="inherit" 
+            onClick={handleToggleDarkMode} 
+            title="Toggle dark mode"
+            size={isMobile ? "small" : "medium"}
+          >
             {darkMode ? <Brightness7Icon /> : <Brightness4Icon />}
           </IconButton>
         </Toolbar>
       </AppBar>
-      <Container maxWidth="xl" sx={{ height: '100vh', p: 0 }}>
+      <Container 
+        maxWidth="xl" 
+        sx={{ 
+          height: '100vh',
+          pt: { xs: '56px', sm: '64px' }, // Add padding for fixed AppBar
+          px: { xs: 1, sm: 2 },
+          py: { xs: 1, sm: 2 },
+          display: 'flex',
+          flexDirection: 'column'
+        }}
+      >
         {!isRegistered ? (
           <RegistrationForm onRegister={handleRegister} />
         ) : (
-          <ChatInterface socket={socket} currentUser={currentUser} onSignOut={handleSignOut} darkMode={darkMode} />
+          <ChatInterface 
+            socket={socket} 
+            currentUser={currentUser} 
+            onSignOut={handleSignOut} 
+            darkMode={darkMode}
+            isMobile={isMobile}
+          />
         )}
       </Container>
     </ThemeProvider>
