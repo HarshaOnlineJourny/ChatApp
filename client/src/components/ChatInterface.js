@@ -53,6 +53,9 @@ const ChatInterface = ({ socket, currentUser, onSignOut, isMobile }) => {
   }, [selectedUser]);
 
   useEffect(() => {
+    // Request initial user list when component mounts
+    socket.emit('get_online_users');
+
     socket.on('update_users', (userList) => {
       console.log('Received update_users:', userList);
       setUsers(userList.filter(user => user.socketId !== currentUser.socketId));
@@ -273,6 +276,37 @@ const ChatInterface = ({ socket, currentUser, onSignOut, isMobile }) => {
       </List>
     </Box>
   );
+
+  const handleSignOut = () => {
+    // Clear all socket listeners
+    socket.off('update_users');
+    socket.off('private_message');
+    socket.off('chat_history');
+    socket.off('unread_counts');
+    socket.off('reaction_added');
+    socket.off('chat_cleared');
+
+    // Clear all state
+    setUsers([]);
+    setSelectedUser(null);
+    setMessage('');
+    setMessages([]);
+    setUnreadCounts({});
+    setShowEmojiPicker(false);
+    setReactionAnchorEl(null);
+    setSelectedMessageForReaction(null);
+    setDrawerOpen(false);
+    setEmojiAnchorEl(null);
+    setSelectedFile(null);
+
+    // Disconnect socket
+    if (socket.connected) {
+      socket.disconnect();
+    }
+
+    // Call parent's onSignOut
+    onSignOut();
+  };
 
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>

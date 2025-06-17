@@ -42,6 +42,10 @@ io.on('connection', (socket) => {
     onlineUsers.forEach(user => console.log(`Socket: ${user.socketId}, Username: ${user.username}`));
   });
 
+  socket.on('get_online_users', () => {
+    emitOnlineUsers();
+  });
+
   socket.on('private_message', ({ recipientUsername, message, isImage }) => {
     const sender = onlineUsers.get(socket.id);
     if (!sender) return;
@@ -57,11 +61,11 @@ io.on('connection', (socket) => {
 
     if (!recipientSocketId) {
       console.log(`Recipient ${recipientUsername} not found or not online.`);
-      return; // Recipient not found or not online
+      return;
     }
 
     const recipient = onlineUsers.get(recipientSocketId);
-    if (!recipient) return; // Should not happen if recipientSocketId was found
+    if (!recipient) return;
 
     const messageData = {
       sender: sender.username,
@@ -72,22 +76,12 @@ io.on('connection', (socket) => {
       reactions: {},
     };
 
-    // Store message in memory
-    if (!userChats.has(sender.username)) {
-      userChats.set(sender.username, new Map());
+    // Store message in memory with a unique key for each user pair
+    const chatKey = [sender.username, recipient.username].sort().join('_');
+    if (!userChats.has(chatKey)) {
+      userChats.set(chatKey, []);
     }
-    if (!userChats.get(sender.username).has(recipient.username)) {
-      userChats.get(sender.username).set(recipient.username, []);
-    }
-    userChats.get(sender.username).get(recipient.username).push(messageData);
-
-    if (!userChats.has(recipient.username)) {
-      userChats.set(recipient.username, new Map());
-    }
-    if (!userChats.get(recipient.username).has(sender.username)) {
-      userChats.get(recipient.username).set(sender.username, []);
-    }
-    userChats.get(recipient.username).get(sender.username).push(messageData);
+    userChats.get(chatKey).push(messageData);
 
     io.to(recipientSocketId).emit('private_message', messageData);
     socket.emit('private_message', messageData);
@@ -97,28 +91,26 @@ io.on('connection', (socket) => {
     const currentUser = onlineUsers.get(socket.id);
     if (!currentUser) return;
 
-    const chatHistory = userChats.has(currentUser.username) && userChats.get(currentUser.username).has(withUsername)
-      ? userChats.get(currentUser.username).get(withUsername)
-      : [];
-    socket.emit('chat_history', chatHistory);
+    // Create the same chat key as used in private_message
+    const chatKey = [currentUser.username, withUsername].sort().join('_');
+    const chatHistory = userChats.has(chatKey) ? userChats.get(chatKey) : [];
+    
+    socket.emit('chat_history', { withUsername, history: chatHistory });
   });
 
   socket.on('clear_chat', ({ withUsername }) => {
     const sender = onlineUsers.get(socket.id);
     if (!sender) return;
 
-    if (userChats.has(sender.username)) {
-      userChats.get(sender.username).delete(withUsername);
-    }
-    const recipient = onlineUsers.get(Array.from(onlineUsers.keys()).find(key => onlineUsers.get(key).username === withUsername));
-    if (recipient && userChats.has(recipient.username)) {
-      userChats.get(recipient.username).delete(sender.username);
+    const chatKey = [sender.username, withUsername].sort().join('_');
+    if (userChats.has(chatKey)) {
+      userChats.delete(chatKey);
     }
 
-    // Notify frontend to clear in-memory chat
     socket.emit('chat_cleared', { withUsername });
+    const recipient = Array.from(onlineUsers.values()).find(user => user.username === withUsername);
     if (recipient) {
-        io.to(recipient.socketId).emit('chat_cleared', { withUsername: sender.username });
+      io.to(recipient.socketId).emit('chat_cleared', { withUsername: sender.username });
     }
   });
 
