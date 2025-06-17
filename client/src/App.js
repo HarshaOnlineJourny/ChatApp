@@ -58,34 +58,31 @@ function App() {
   const handleToggleDarkMode = () => setDarkMode((prev) => !prev);
 
   useEffect(() => {
-    // Reconnect socket if currentUser exists but socketId is missing (e.g., page refresh)
-    if (currentUser && !currentUser.socketId) {
-      if (!socket.connected) socket.connect();
-      socket.emit('register', currentUser);
-    }
-
-    // Listen for user registration confirmation (optional, based on server behavior)
-    // In current in-memory server, it just updates users and doesn't send 'registration_success'
-    // socket.on('registration_success', (data) => {
-    //   setIsRegistered(true);
-    //   sessionStorage.setItem('chatUser', JSON.stringify({ ...currentUser, socketId: data.socketId }));
-    //   setCurrentUser((prev) => ({ ...prev, socketId: data.socketId }));
-    // });
+    // Listen for server confirmation of registration
+    socket.on('registered', (data) => {
+      console.log('Received registered confirmation:', data);
+      setIsRegistered(true);
+      setCurrentUser((prev) => ({
+        ...prev,
+        socketId: data.id, // Use 'id' from server as socketId
+      }));
+      sessionStorage.setItem('chatUser', JSON.stringify({ ...currentUser, socketId: data.id }));
+    });
 
     return () => {
-      // socket.off('registration_success');
+      socket.off('registered');
     };
   }, [currentUser]);
 
   const handleRegister = (userData) => {
-    // Connect the socket explicitly here before emitting
     if (!socket.connected) {
       socket.connect();
     }
     socket.emit('register', userData);
-    setCurrentUser(userData);
-    setIsRegistered(true); // Assume registered upon emit to server for in-memory only
-    sessionStorage.setItem('chatUser', JSON.stringify(userData)); // Save immediately
+    // We now wait for the 'registered' event to set currentUser and isRegistered
+    // setCurrentUser(userData);
+    // setIsRegistered(true);
+    // sessionStorage.setItem('chatUser', JSON.stringify(userData));
   };
 
   const handleSignOut = () => {

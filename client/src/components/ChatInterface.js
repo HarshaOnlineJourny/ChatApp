@@ -53,8 +53,8 @@ const ChatInterface = ({ socket, currentUser, onSignOut, isMobile }) => {
   }, [selectedUser]);
 
   useEffect(() => {
-    socket.on('user_list', (userList) => {
-      console.log('Received user_list:', userList);
+    socket.on('update_users', (userList) => {
+      console.log('Received update_users:', userList);
       setUsers(userList.filter(user => user.socketId !== currentUser.socketId));
     });
 
@@ -78,7 +78,7 @@ const ChatInterface = ({ socket, currentUser, onSignOut, isMobile }) => {
     });
 
     return () => {
-      socket.off('user_list');
+      socket.off('update_users');
       socket.off('private_message');
       socket.off('chat_history');
       socket.off('unread_counts');
