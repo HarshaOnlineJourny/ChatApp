@@ -301,6 +301,132 @@ const ChatInterface = ({ socket, currentUser, onSignOut, isMobile }) => {
     </Box>
   );
 
+  const ChatArea = () => (
+    <Box sx={{ 
+      flex: 1, 
+      display: 'flex', 
+      flexDirection: 'column',
+      bgcolor: 'background.default',
+      height: '100%'
+    }}>
+      {selectedUser ? (
+        <>
+          <Box sx={{ 
+            p: 2, 
+            borderBottom: 1, 
+            borderColor: 'divider',
+            bgcolor: 'background.paper',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 2
+          }}>
+            <Avatar sx={{ bgcolor: stringToColor(selectedUser.username) }}>
+              {selectedUser.username[0].toUpperCase()}
+            </Avatar>
+            <Box>
+              <Typography variant="h6">{selectedUser.username}</Typography>
+              <Typography variant="body2" color="text.secondary">
+                {selectedUser.age} • {selectedUser.country}
+              </Typography>
+            </Box>
+          </Box>
+          <Box sx={{ 
+            flex: 1, 
+            overflow: 'auto', 
+            p: 2,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 1
+          }}>
+            {messages.map((msg, index) => (
+              <Box
+                key={index}
+                sx={{
+                  alignSelf: msg.sender === currentUser.username ? 'flex-end' : 'flex-start',
+                  maxWidth: '70%',
+                }}
+              >
+                <Paper
+                  elevation={1}
+                  sx={{
+                    p: 2,
+                    bgcolor: msg.sender === currentUser.username ? 'primary.main' : 'background.paper',
+                    color: msg.sender === currentUser.username ? 'primary.contrastText' : 'text.primary',
+                    borderRadius: 2,
+                  }}
+                >
+                  {msg.isImage ? (
+                    <img 
+                      src={msg.message} 
+                      alt="Shared" 
+                      style={{ maxWidth: '100%', borderRadius: 8 }}
+                    />
+                  ) : (
+                    <Typography>{msg.message}</Typography>
+                  )}
+                  <Typography variant="caption" sx={{ display: 'block', mt: 1, opacity: 0.7 }}>
+                    {new Date(msg.timestamp).toLocaleTimeString()}
+                  </Typography>
+                </Paper>
+              </Box>
+            ))}
+            <div ref={messagesEndRef} />
+          </Box>
+          <Box sx={{ 
+            p: 2, 
+            borderTop: 1, 
+            borderColor: 'divider',
+            bgcolor: 'background.paper'
+          }}>
+            <form onSubmit={handleSendMessage} style={{ display: 'flex', gap: 8 }}>
+              <IconButton onClick={handleEmojiIconClick} color="primary">
+                <EmojiEmotionsIcon />
+              </IconButton>
+              <IconButton onClick={handleImageClick} color="primary">
+                <PhotoCameraIcon />
+              </IconButton>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileSelect}
+                accept="image/*"
+                style={{ display: 'none' }}
+              />
+              <TextField
+                fullWidth
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="Type a message..."
+                variant="outlined"
+                size="small"
+              />
+              <Button 
+                type="submit" 
+                variant="contained" 
+                color="primary"
+                disabled={!message.trim()}
+              >
+                Send
+              </Button>
+            </form>
+          </Box>
+        </>
+      ) : (
+        <Box sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          height: '100%',
+          color: 'text.secondary'
+        }}>
+          <Typography variant="h6">
+            Select a user to start chatting
+          </Typography>
+        </Box>
+      )}
+    </Box>
+  );
+
   const handleSignOut = () => {
     // Clear all socket listeners
     socket.off('update_users');
