@@ -309,11 +309,9 @@ const ChatInterface = ({ socket, currentUser, onSignOut, isMobile }) => {
 
   const ChatArea = () => (
     <Box sx={{ 
-      flex: 1, 
       display: 'flex', 
       flexDirection: 'column',
-      bgcolor: 'background.default',
-      height: '100%'
+      bgcolor: 'background.default'
     }}>
       {selectedUser ? (
         <>
@@ -335,9 +333,19 @@ const ChatInterface = ({ socket, currentUser, onSignOut, isMobile }) => {
                 {selectedUser.age} • {selectedUser.country}
               </Typography>
             </Box>
+            <IconButton
+              onClick={() => {
+                setMessages([]);
+                socket.emit('clear_chat', { withUsername: selectedUser.username });
+              }}
+              color="error"
+              sx={{ ml: 'auto' }}
+              title="Clear Chat"
+            >
+              <DeleteSweepIcon />
+            </IconButton>
           </Box>
           <Box sx={{ 
-            flex: 1, 
             overflow: 'auto', 
             p: 2,
             display: 'flex',
