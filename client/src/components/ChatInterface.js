@@ -311,7 +311,8 @@ const ChatInterface = ({ socket, currentUser, onSignOut, isMobile }) => {
     <Box sx={{ 
       display: 'flex', 
       flexDirection: 'column',
-      bgcolor: 'background.default'
+      bgcolor: 'background.default',
+      pb: '72px'
     }}>
       {selectedUser ? (
         <>
@@ -350,7 +351,8 @@ const ChatInterface = ({ socket, currentUser, onSignOut, isMobile }) => {
             p: 2,
             display: 'flex',
             flexDirection: 'column',
-            gap: 1
+            gap: 1,
+            flex: 1
           }}>
             {messages.map((msg, index) => (
               <Box
@@ -386,14 +388,6 @@ const ChatInterface = ({ socket, currentUser, onSignOut, isMobile }) => {
             ))}
             <div ref={messagesEndRef} />
           </Box>
-          <MessageInput
-            message={message}
-            setMessage={setMessage}
-            onSend={() => handleSendMessage({ preventDefault: () => {} })}
-            onEmojiClick={handleEmojiIconClick}
-            onImageClick={handleImageClick}
-            fileInputRef={fileInputRef}
-          />
         </>
       ) : (
         <Box sx={{ 
@@ -498,6 +492,27 @@ const ChatInterface = ({ socket, currentUser, onSignOut, isMobile }) => {
           </Box>
         </>
       )}
+      <Box sx={{
+        position: 'fixed',
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 1300,
+        bgcolor: 'background.paper',
+        p: 1,
+        boxShadow: 3,
+        borderTop: '1px solid',
+        borderColor: 'divider',
+      }}>
+        <MessageInput
+          message={message}
+          setMessage={setMessage}
+          onSend={() => handleSendMessage({ preventDefault: () => {} })}
+          onEmojiClick={handleEmojiIconClick}
+          onImageClick={handleImageClick}
+          fileInputRef={fileInputRef}
+        />
+      </Box>
       <Popover
         open={Boolean(emojiAnchorEl)}
         anchorEl={emojiAnchorEl}
