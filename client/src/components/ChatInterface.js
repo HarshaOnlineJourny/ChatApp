@@ -30,6 +30,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
 import ImageIcon from '@mui/icons-material/Image';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
+import MessageInput from './MessageInput';
 
 const ChatInterface = ({ socket, currentUser, onSignOut, isMobile }) => {
   const [users, setUsers] = useState([]);
@@ -377,65 +378,14 @@ const ChatInterface = ({ socket, currentUser, onSignOut, isMobile }) => {
             ))}
             <div ref={messagesEndRef} />
           </Box>
-          <Box sx={{ 
-            p: 2, 
-            borderTop: 1, 
-            borderColor: 'divider',
-            bgcolor: 'background.paper'
-          }}>
-            <Box 
-              component="form" 
-              onSubmit={handleSendMessage} 
-              style={{ display: 'flex', gap: 8 }}
-            >
-              <IconButton onClick={handleEmojiIconClick} color="primary">
-                <EmojiEmotionsIcon />
-              </IconButton>
-              <IconButton onClick={handleImageClick} color="primary">
-                <PhotoCameraIcon />
-              </IconButton>
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileSelect}
-                accept="image/*"
-                style={{ display: 'none' }}
-              />
-              <TextField
-                fullWidth
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                inputRef={messageInputRef}
-                placeholder="Type a message..."
-                variant="outlined"
-                size="small"
-                multiline
-                maxRows={4}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    '& fieldset': {
-                      borderColor: 'divider',
-                    },
-                    '&:hover fieldset': {
-                      borderColor: 'primary.main',
-                    },
-                  },
-                }}
-              />
-              <Button 
-                type="submit" 
-                variant="contained" 
-                color="primary"
-                disabled={!message.trim()}
-                sx={{
-                  minWidth: '80px',
-                  borderRadius: 2,
-                }}
-              >
-                Send
-              </Button>
-            </Box>
-          </Box>
+          <MessageInput
+            message={message}
+            setMessage={setMessage}
+            onSend={() => handleSendMessage({ preventDefault: () => {} })}
+            onEmojiClick={handleEmojiIconClick}
+            onImageClick={handleImageClick}
+            fileInputRef={fileInputRef}
+          />
         </>
       ) : (
         <Box sx={{ 
